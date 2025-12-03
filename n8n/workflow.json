@@ -1,0 +1,649 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message?.video !== undefined }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "6b951706-0dd8-495b-a8eb-9aed385b5e66"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "видео"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b6fd54fe-965d-4678-8b20-e8f888342569",
+                    "leftValue": "={{ $json.message?.text?.trim().match(/^https:\\/\\/.*\\.mp4$/i) !== null }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "mp4 ссылка"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        1648,
+        496
+      ],
+      "id": "abfb7135-befe-4441-b816-d97dcc4b4a96",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "chatId": "710111913",
+        "text": "=Пожалуйста, пришлите видео или ссылку на видео",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1888,
+        368
+      ],
+      "id": "8fc6b725-f109-4719-a933-f506f33895d8",
+      "name": "Send a text message1",
+      "webhookId": "f868d2f3-ed47-4e0f-82b1-44bf564b89fc",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ngthd0mfHplpaXQ6",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.video.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1888,
+        656
+      ],
+      "id": "5f7eac0d-848e-4de5-b812-a5bd9650d2b4",
+      "name": "Get a file",
+      "webhookId": "e0769871-efe3-49da-81a5-2f88a6fdd33f",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ngthd0mfHplpaXQ6",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/tmp/input-video.mp4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2128,
+        416
+      ],
+      "id": "b97e3c80-141a-4d0a-a279-6eb5d43ffac1",
+      "name": "Read/Write Files from Disk2"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.message.text }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1888,
+        512
+      ],
+      "id": "89804042-467a-4fa3-9a13-25ec6ebb8b58",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -y -i \"/tmp/input-video.mp4\" -vn -acodec pcm_s16le -ar 44100 -ac 2 /tmp/audio.wav"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2336,
+        416
+      ],
+      "id": "e034875b-7545-483b-a571-0d0d6feb8c6c",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://pytorch-server:8000/transcribe",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2736,
+        416
+      ],
+      "id": "0f55cab0-22df-4846-86b7-9d2c737c71d2",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/tmp/audio.wav",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2528,
+        416
+      ],
+      "id": "b1f8032a-515b-4cd9-9477-6cc3ae20ccb1",
+      "name": "Read/Write Files from Disk3"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты — профессиональный переводчик субтитров. Твоя задача — перевести предоставленные субтитры с любого языка на русский язык, строго сохранив формат SRT.\n\nПравила:\n\nНе изменяй номера строк и временные метки (формат: ЧЧ:ММ:СС,мс --> ЧЧ:ММ:СС,мс).\nПереводи только текст каждой реплики.\nСохраняй оригинальную структуру: пустые строки между блоками, порядок следования.\nПеревод должен быть естественным, разговорным, но точным по смыслу.\nЕсли в оригинале несколько строк в одном блоке — сохрани их как есть (переведи каждую строку, разделив переносом).\nНе добавляй пояснений, комментариев, заголовков или лишнего текста вне SRT-формата.\nНа выходе должен быть только чистый SRT-контент, готовый к сохранению в файл с расширением .srt.\nВот входные субтитры:\n\n{{ $json.data }}\n\nТеперь выведи переведённые субтитры на русском языке в точном соответствии с форматом SRT.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        2960,
+        416
+      ],
+      "id": "259e61f2-7162-4262-92ef-faf7156d5f26",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-3.3-70b-instruct:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        3040,
+        304
+      ],
+      "id": "9992fde1-d264-4889-9ba2-df68d74b52ed",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "Y8nYgVenAAp6b8rn",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/tmp/out_ru.srt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        3472,
+        416
+      ],
+      "id": "32daa491-fc61-4c57-922b-884b5c91b389",
+      "name": "Read/Write Files from Disk4"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "text",
+        "options": {
+          "fileName": "out_ru.srt"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        3296,
+        416
+      ],
+      "id": "a63f8d91-3a8e-4a06-8841-a7f846d6da78",
+      "name": "Convert to File1"
+    },
+    {
+      "parameters": {
+        "command": "ffmpeg -y \\\n  -i \"/tmp/input-video.mp4\" \\\n  -vf \"subtitles=/tmp/out_ru.srt:force_style='Fontsize=22,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BackColour=&H80000000&,Bold=1'\" \\\n  -c:a copy \\\n  \"/tmp/output_ru.mp4\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3744,
+        416
+      ],
+      "id": "92c5dfc9-d2ca-486b-aa9a-bbce6ea6812f",
+      "name": "Execute Command1"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/tmp/output_ru.mp4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        4016,
+        416
+      ],
+      "id": "5ac14e49-c998-42a8-b45a-cd5c47ce3d24",
+      "name": "Read/Write Files from Disk5"
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "928771289",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "Готово! Вот ваше итоговое видео"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4192,
+        416
+      ],
+      "id": "e462beb4-715b-4d61-8267-8b2381c56bcf",
+      "name": "Send a video",
+      "webhookId": "f868d2f3-ed47-4e0f-82b1-44bf564b89fc",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ngthd0mfHplpaXQ6",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Загрузка и сохранение исходного видео на диск input-video.mp4",
+        "height": 592,
+        "width": 640,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1632,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "f2367aa6-17f3-4767-9e93-5f27d8c69edb",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## input-video.mp4 -> audio.wav через ffmpeg",
+        "height": 592,
+        "width": 384,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2288,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "e111af95-e190-431a-8bfe-36643429d4f0",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## SST через утилиту auto_subtitle",
+        "height": 592,
+        "width": 192,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2688,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "68b22dff-0a36-4cfd-a419-e452eb4b0295",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## EN -> RU",
+        "height": 592,
+        "width": 336,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2896,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "059c6b22-8aed-4e3f-ab50-e1494835c983",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Сохранение out_ru.srt",
+        "height": 592,
+        "width": 368,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3248,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "f396eb67-ce7f-4c81-9665-0c7d7507af0a",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## out_ru.srt + input-video.mp4 -> output_ru.mp4 через fmmpeg",
+        "height": 592,
+        "width": 320,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3632,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "21d496d5-b521-4376-9115-937d7d5b2012",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Отправка output_ru.mp4 в тг бота",
+        "height": 592,
+        "width": 384,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3968,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "b49a5266-b7e2-4fa7-b8d3-159eb4f2cb72",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1328,
+        512
+      ],
+      "id": "07a6996b-d7d9-44a4-be75-ca0e207af4d8",
+      "name": "Telegram Trigger",
+      "webhookId": "ec5f1ce5-9efd-49f7-bea1-48f371cc2bc1",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ngthd0mfHplpaXQ6",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk2": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk3": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Convert to File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk4": {
+      "main": [
+        [
+          {
+            "node": "Execute Command1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk5": {
+      "main": [
+        [
+          {
+            "node": "Send a video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a video": {
+      "main": [
+        []
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d0768a34-c710-42e5-b9f0-30ed6400496a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9c0a5ca5ccc890a4d2a001fd647ccb27ee70b2d7619c05cf6dd60ebd4218890e"
+  },
+  "id": "PKUKy8npGRM2NODo",
+  "tags": []
+}
